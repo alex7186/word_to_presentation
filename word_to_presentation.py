@@ -15,6 +15,7 @@ headers_Get = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:49.0) Gecko
 'Accept-Language': 'en-US,en;q=0.5','Accept-Encoding': 'gzip, deflate','DNT': '1','Connection': 'keep-alive','Upgrade-Insecure-Requests': '1'}
 
 progress_bar_count=1700
+current_progress_bar_count = 0
 
 def yahoo_pictures(question):
     req_session = Session()
@@ -139,6 +140,17 @@ def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, 
     if iteration == total: 
         print()
 
+def update_progress_bar(new_progress_bar_count, progress_bar_count):
+    global current_progress_bar_count
+    current_progress_bar_count = new_progress_bar_count
+
+    printProgressBar(
+        current_progress_bar_count*progress_bar_count, 
+        progress_bar_count, 
+        prefix = 'Progress:', 
+        suffix = 'Complete', 
+        length = 50)
+
     
 def ask_session(save_file=True, topic='', slides_count=0):
     # по информации от пользователя формируется pptx 
@@ -156,23 +168,27 @@ def ask_session(save_file=True, topic='', slides_count=0):
 
     # при возникновении ошибки возвращаем False в флаге
     # (на стороне yahoo, не всегда изображения имеют требуемый класс) 
-    printProgressBar(0, progress_bar_count, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    update_progress_bar(0.01, progress_bar_count)
 
     try:
         search_results = search_web(topic, slides_count)
     except:
         return False, topic, slides_count
 
-    printProgressBar(int(progress_bar_count*0.39), progress_bar_count, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    update_progress_bar(0.6, progress_bar_count)
+
     urls = [el['url'] for el in search_results]
 
+    update_progress_bar(0.18, progress_bar_count)
+
     # если изображений меньше, чем необходимо, задается вопрос о продолжении работы
+    progress_bar_rest = 1 - current_progress_bar_count
     exit_flag = False
     if len(urls) < slides_count:
         exit_flag = ask_exit(f"Вместо {slides_count+1} слайдов будет только {len(urls)+1}")
 
     if exit_flag == True:
-        printProgressBar(int(progress_bar_count*1), progress_bar_count, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        update_progress_bar(1, progress_bar_count)
         print('Работа прервана ...')
         
         
@@ -180,9 +196,13 @@ def ask_session(save_file=True, topic='', slides_count=0):
     else:
         for i, url in enumerate(urls):
             add_picture_slide(ppt, url, image_title=' ', image_subtitle=search_results[i]["label"]) 
+
+            if current_progress_bar_count <= 0.9:
+                update_progress_bar(current_progress_bar_count + progress_bar_rest * i / (len(urls)+25), progress_bar_count)
         if save_file:
             ppt.save(topic + ".pptx") 
-        printProgressBar(int(progress_bar_count*1), progress_bar_count, prefix = 'Progress:', suffix = 'Complete', length = 50)
+
+        update_progress_bar(1, progress_bar_count)
         print(f"Создан файл '{topic + '.pptx'}'")
 
     return True, topic, slides_count
